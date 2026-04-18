@@ -282,10 +282,16 @@ Client
 | 16 | Testing | Unit, integration, E2E including OpenAI-compat layer tests |
 | 17 | Prompt Templates + Analytics + Evals | Template registry, spend dashboard, eval harness, output comparison |
 | 18 | Webhooks + Event Bus | Subscription CRUD, event emitter, delivery worker, event log API |
+| 19 | Frontend — Core Surfaces | Dashboard, Chat/Inference, Projects, Sessions, Tasks (F-1 to F-5) |
+| 20 | Frontend — Model & Routing | Model Leaderboard, Output Comparison, Provider Health, Routing Decision Viewer (F-6 to F-9) |
+| 21 | Frontend — Memory & Context | Memory Viewer, Context Assembly Inspector, Semantic Cache Browser (F-10 to F-12) |
+| 22 | Frontend — Artifacts & Templates | Artifact Browser, Prompt Template Registry (F-13 to F-14) |
+| 23 | Frontend — Analytics & Observability | Spend Dashboard, Trace/Replay Viewer, Event Log (F-15 to F-17) |
+| 24 | Frontend — Policies & Admin | Policy Config, Approvals Queue, API Key Manager, Webhook Manager, Eval Harness, Settings (F-18 to F-23) |
 
 ---
 
-## Full Task List (127 tasks)
+## Full Task List (150 tasks — 127 backend + 23 frontend)
 
 | # | Phase | Task | Key Deliverables |
 |---|-------|------|-----------------|
@@ -416,6 +422,29 @@ Client
 | 125 | Phase 18 | Event emitter | `core/events.py` |
 | 126 | Phase 18 | Webhook delivery worker | `workers/webhook_worker.py` |
 | 127 | Phase 18 | Event log API | `api/v1/events.py` |
+| 128 | Phase 19 | Dashboard — system overview, provider health, spend summary, DLQ count | `ui/src/pages/Dashboard.tsx` |
+| 129 | Phase 19 | Chat / Inference — message input, model selector, streaming view, branch button | `ui/src/pages/Chat.tsx` |
+| 130 | Phase 19 | Projects — list/create, project state viewer, decisions timeline | `ui/src/pages/Projects.tsx` |
+| 131 | Phase 19 | Sessions — list per project, threaded conversation view, branch fork UI | `ui/src/pages/Sessions.tsx` |
+| 132 | Phase 19 | Tasks — task list, state machine badge, dependency graph, DLQ inspector | `ui/src/pages/Tasks.tsx` |
+| 133 | Phase 20 | Model Leaderboard — ~94-model price/latency/quality matrix, sortable/filterable | `ui/src/pages/Leaderboard.tsx` |
+| 134 | Phase 20 | Output Comparison — side-by-side N-model parallel response view | `ui/src/pages/Compare.tsx` |
+| 135 | Phase 20 | Provider Health Panel — circuit breaker states, latency/error rates per provider | `ui/src/pages/ProviderHealth.tsx` |
+| 136 | Phase 20 | Routing Decision Viewer — classifier output, strategy, fallback chain per request | `ui/src/pages/RoutingDecision.tsx` |
+| 137 | Phase 21 | Memory Viewer — session, project, preference memory structured display | `ui/src/pages/Memory.tsx` |
+| 138 | Phase 21 | Context Assembly Inspector — ranked chunks, token budget breakdown per request | `ui/src/pages/ContextInspector.tsx` |
+| 139 | Phase 21 | Semantic Cache Browser — hit/miss log, similarity scores, cached entry viewer | `ui/src/pages/SemanticCache.tsx` |
+| 140 | Phase 22 | Artifact Browser — versioned list, side-by-side diff, export JSON/MD/ZIP | `ui/src/pages/Artifacts.tsx` |
+| 141 | Phase 22 | Prompt Template Registry — list/create/edit, version diff, rollback, tag filter | `ui/src/pages/PromptTemplates.tsx` |
+| 142 | Phase 23 | Spend Analytics Dashboard — per-project/session/model cost charts, quota alerts | `ui/src/pages/SpendAnalytics.tsx` |
+| 143 | Phase 23 | Trace / Replay Viewer — OTel span timeline, step-by-step replay | `ui/src/pages/Replay.tsx` |
+| 144 | Phase 23 | Event Log — webhook event stream, filterable by type/project/provider | `ui/src/pages/EventLog.tsx` |
+| 145 | Phase 24 | Policy Configuration — PII rules, guardrails, privacy routing, token quotas | `ui/src/pages/Policies.tsx` |
+| 146 | Phase 24 | Approvals Queue — pending approvals, approve/reject with reason, audit trail | `ui/src/pages/Approvals.tsx` |
+| 147 | Phase 24 | API Key Manager — create/rotate/expire keys, per-key usage, expiry warnings | `ui/src/pages/ApiKeys.tsx` |
+| 148 | Phase 24 | Webhook Manager — subscription CRUD, delivery log, retry controls | `ui/src/pages/Webhooks.tsx` |
+| 149 | Phase 24 | Eval Harness — run evals against prompt template, view scored comparison | `ui/src/pages/Evals.tsx` |
+| 150 | Phase 24 | Settings — provider API keys, Ollama model pull UI, system defaults | `ui/src/pages/Settings.tsx` |
 
 ---
 
@@ -439,11 +468,76 @@ Client
 ## Non-Goals (V1)
 
 - No cloud deployment
-- No frontend / UI control plane
 - No multi-user collaboration
 - No repo graph ingestion
 - No IDE plugin
 - No advanced command execution sandboxes
 - No benchmarking harness
 
-These are V2 only, after V1 is stable.
+---
+
+## Frontend — UI Control Plane (Phase 19+)
+
+23 UI surfaces across 5 functional domains. Built after V1 backend is stable.
+
+**Tech stack (planned):** React + Vite, TypeScript, Tailwind CSS, served locally via docker-compose.
+
+### Core Surfaces
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-1 | **Dashboard** | System overview — provider health, active sessions, spend summary, DLQ count |
+| F-2 | **Chat / Inference** | Message input, model/strategy selector, streaming response view, conversation branch button |
+| F-3 | **Projects** | Project list/create, project state viewer, decisions log timeline |
+| F-4 | **Sessions** | Session list per project, threaded conversation view, branch fork UI |
+| F-5 | **Tasks** | Task list, state machine status badge, dependency graph, DLQ inspector |
+
+### Model & Routing
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-6 | **Model Leaderboard** | ~94-model price/latency/quality matrix, sortable and filterable |
+| F-7 | **Output Comparison** | Side-by-side N-model parallel response view for same prompt |
+| F-8 | **Provider Health Panel** | Circuit breaker states, per-provider latency/error rates, health indicators |
+| F-9 | **Routing Decision Viewer** | Why a model was picked — classifier output, strategy used, fallback chain |
+
+### Memory & Context
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-10 | **Memory Viewer** | Session, project, and preference memory — structured readable display |
+| F-11 | **Context Assembly Inspector** | What was assembled for a request — ranked chunks, token budget breakdown |
+| F-12 | **Semantic Cache Browser** | Cache hit/miss log, similarity scores, cached entry viewer |
+
+### Artifacts & Templates
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-13 | **Artifact Browser** | List versioned artifacts, side-by-side diff view, export (JSON/MD/ZIP) |
+| F-14 | **Prompt Template Registry** | List/create/edit templates, version diff viewer, rollback, tag/project filter |
+
+### Analytics & Observability
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-15 | **Spend Analytics Dashboard** | Per-project/session/model cost charts, token usage over time, quota alerts |
+| F-16 | **Trace / Replay Viewer** | OTel span timeline, replay past execution step-by-step |
+| F-17 | **Event Log** | Webhook event stream, filterable by type, project, provider |
+
+### Policies & Security
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-18 | **Policy Configuration** | PII rules, content guardrails, privacy routing toggles, per-project token quotas |
+| F-19 | **Approvals Queue** | Pending approval cards, approve/reject with reason, audit trail |
+| F-20 | **API Key Manager** | Create/rotate/expire keys, per-key usage stats, expiry warnings |
+
+### Administration
+
+| # | Surface | Description |
+|---|---------|-------------|
+| F-21 | **Webhook Manager** | Subscription CRUD, event type selector, delivery log, retry controls |
+| F-22 | **Eval Harness** | Run evals against a prompt template, view scored output comparison |
+| F-23 | **Settings** | Provider API keys, Ollama model pull UI, system defaults |
+
+**Highest design complexity:** F-7 Output Comparison, F-9 Routing Decision Viewer, F-11 Context Assembly Inspector, F-15 Spend Dashboard, F-16 Trace/Replay — these require custom data visualizations beyond standard CRUD forms.
