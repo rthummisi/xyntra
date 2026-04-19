@@ -1,0 +1,95 @@
+services:
+  ui:
+    image: node:22-alpine
+    container_name: xyntra-ui
+    working_dir: /app/ui
+    environment:
+      VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:18000/api/v1}"
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${UI_HOST_PORT:-4173}:4173"
+    volumes:
+      - .:/app
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 4173"
+
+  api:
+    build:
+      context: .
+    container_name: xyntra-api
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    ports:
+      - "${API_HOST_PORT:-18000}:8000"
+    volumes:
+      - .:/app
+      - artifacts:/app/artifacts
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: .
+    container_name: xyntra-worker
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - artifacts:/app/artifacts
+    command: celery -A workers.celery_app worker --loglevel=info
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: xyntra-postgres
+    environment:
+      POSTGRES_DB: xyntra
+      POSTGRES_USER: xyntra
+      POSTGRES_PASSWORD: xyntra
+    ports:
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xyntra -d xyntra"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: xyntra-redis
+    ports:
+      - "${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: xyntra-ollama
+    ports:
+      - "${OLLAMA_HOST_PORT:-21434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  artifacts:

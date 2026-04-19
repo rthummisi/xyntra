@@ -1,64 +1,180 @@
 # xyntra
 
-> Local-machine AI execution control plane — routes across 8 providers and ~94 models while preserving session continuity, project state, and execution history.
+Local-machine AI execution control plane with a local backend and React control-plane UI.
 
-**Status:** Pre-build — spec locked, implementation not started.
+## Status
 
----
+Backend Phases 1-18 are implemented in-repo, and the Phase 19-24 frontend control plane now lives under `ui/`. The stack includes live pages for dashboard, chat, projects, sessions, tasks, providers, comparison, analytics, events, webhooks, evals, and operational contract views for backend capabilities that do not yet expose dedicated UI APIs.
 
-## What is xyntra?
+## Local Startup
 
-xyntra is a backend-first AI execution control plane that runs entirely on your local machine.  
-It makes multiple AI models behave like one consistent, stateful, project-aware execution engine.
+Run the single startup script:
 
-This is **not** a thin proxy. This is **not** a chatbot wrapper.  
-This is a production-grade routing and execution layer.
+```bash
+./scripts/start_xyntra.sh
+```
 
----
+It handles the local prerequisites automatically:
+- creates `.env` from `.env.example` if needed
+- builds API and worker images
+- starts PostgreSQL, Redis, Ollama, API, worker, and UI
+- enables the `vector` extension
+- creates the `xyntra_test` database if missing
+- applies Alembic migrations
+- waits for API and UI readiness
 
-## Key Capabilities
+Optional seeded startup:
 
-- Routes across 8 provider adapters (~94 models) including local Ollama
-- OpenAI-compatible drop-in (`/v1/chat/completions`) — point any OpenAI client at xyntra
-- Privacy-first `local_only` mode — zero data leaves your machine
-- Semantic cache — pgvector similarity lookup before hitting any provider
-- PII detection + redaction before sending to hosted providers
-- Project-aware memory — system remembers what you were working on
-- Session continuity across provider switches
-- Task planning, execution, verification, and tracking
-- Versioned artifact storage
-- Full observability, replay, and cost analytics
-- Webhook/event bus for external integrations
+```bash
+SEED_DEV_DATA=true ./scripts/start_xyntra.sh
+```
 
----
+Check service health:
 
-## Providers
+```bash
+curl http://localhost:${API_HOST_PORT:-18000}/api/v1/health
+curl http://localhost:${API_HOST_PORT:-18000}/api/v1/ready
+```
 
-| Provider | Models |
-|----------|--------|
-| Anthropic | claude-opus-4-7, claude-sonnet-4-6, claude-haiku-4-5, claude-3.x |
-| OpenAI | gpt-4o, gpt-4.5, o1, o3, o4-mini |
-| Ollama (local) | llama3.x, qwen2.5, phi4, gemma2, deepseek-r1, codellama |
-| Google Gemini | gemini-2.5-pro, gemini-2.0-flash, gemini-1.5-pro |
-| xAI Grok | grok-3, grok-3-mini, grok-2 |
-| Mistral | mistral-large, codestral, mixtral-8x22b, pixtral |
-| DeepSeek | deepseek-chat (V3), deepseek-reasoner (R1) |
-| Groq | llama-3.3-70b, deepseek-r1-distill, gemma2, mixtral |
+Open the control plane:
 
----
+```bash
+open http://localhost:${UI_HOST_PORT:-4173}
+```
 
-## Spec
+Manual seed command if you need it separately:
 
-See [SPEC.md](./SPEC.md) for the full product definition, architecture, feature list, and 127-task build plan across 18 phases.
+```bash
+./scripts/seed_dev_data.sh
+```
 
----
+## CLI Invocation
 
-## Stack
+Install the project once so the console commands are available from any working directory:
 
-Python 3.12 · FastAPI · PostgreSQL + pgvector · Redis · Alembic · SQLAlchemy 2.x · Pydantic v2 · OpenTelemetry · Docker · docker-compose
+```bash
+pip install -e /Users/raghunathvenkataramanathummisi/Downloads/Xyntra
+```
 
----
+CLI commands:
 
-## Implementation
+```bash
+xyntra
+xyntra run "Summarize this repo"
+xyntra exec pwd
+xyntra test
+xyntra test pytest tests/unit
+xyntra status
+xyntra start
+xyntra-api
+```
 
-Not started. Build begins at Phase 1.
+CLI behavior:
+- `xyntra` starts the stack if needed, then opens an interactive terminal session
+- `xyntra run "..."` sends a one-shot prompt while retaining directory-scoped context
+- `xyntra exec ...` runs a terminal command in the current repo root when available, streams output, and stores the transcript in the active session
+- `xyntra test` auto-detects a default test command (`pytest` for this repo) unless you pass an explicit command
+- `xyntra status` shows service readiness and the current retained context
+- `xyntra start` runs the full startup flow only
+- `xyntra-api` runs only the FastAPI server
+
+CLI context retention:
+- context is retained per working directory
+- the CLI stores `cwd -> project_id/session_id/user_id` in `~/.xyntra/cli_state.json`
+- repeated calls from the same directory reuse that project/session
+- command invocations and captured output are persisted into the active backend session
+- request metadata includes `cwd`, hostname, and terminal type
+- the CLI does not capture shell scrollback or arbitrary terminal process state
+
+Default CLI model:
+- interactive/default model: `llama3.2:3b`
+- default routing mode: `local_only=true`
+- embedding model: `nomic-embed-text`
+
+## Local Services
+
+- FastAPI app on `http://localhost:${API_HOST_PORT:-18000}`
+- React UI on `http://localhost:${UI_HOST_PORT:-4173}`
+- PostgreSQL + pgvector on `localhost:${POSTGRES_HOST_PORT:-15432}`
+- Redis on `localhost:${REDIS_HOST_PORT:-16379}`
+- Ollama on `localhost:${OLLAMA_HOST_PORT:-21434}`
+
+## Notes
+
+- This project is local-machine only in V1.
+- The frontend is a Vite/React TypeScript app under [`ui/`](./ui).
+- If you prefer not to use Docker for the UI, run `cd ui && npm install && npm run dev`.
+- `./scripts/dev_start.sh` and `./scripts/bootstrap_project.sh` now delegate to `./scripts/start_xyntra.sh`.
+
+## API Examples
+
+Health:
+
+```bash
+curl http://localhost:${API_HOST_PORT:-18000}/api/v1/health
+```
+
+Create project:
+
+```bash
+curl -X POST http://localhost:${API_HOST_PORT:-18000}/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -d '{
+    "owner_id": "11111111-1111-1111-1111-111111111111",
+    "name": "Example Project",
+    "description": "Backend smoke test",
+    "local_only": false,
+    "token_quota": 50000
+  }'
+```
+
+Create session:
+
+```bash
+curl -X POST http://localhost:${API_HOST_PORT:-18000}/api/v1/projects/<project_id>/sessions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "11111111-1111-1111-1111-111111111111",
+    "title": "Primary Session"
+  }'
+```
+
+Unified chat:
+
+```bash
+curl -X POST http://localhost:${API_HOST_PORT:-18000}/api/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Summarize the system state."}],
+    "local_only": false
+  }'
+```
+
+OpenAI-compatible chat completions:
+
+```bash
+curl -X POST http://localhost:${API_HOST_PORT:-18000}/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4.1",
+    "messages": [{"role": "user", "content": "Hello from the OpenAI client shape"}]
+  }'
+```
+
+Provider leaderboard:
+
+```bash
+curl http://localhost:${API_HOST_PORT:-18000}/api/v1/providers/leaderboard
+```
+
+Plan tasks:
+
+```bash
+curl -X POST http://localhost:${API_HOST_PORT:-18000}/api/v1/tasks/plan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": "<project_id>",
+    "objective": "Bootstrap a routing test plan"
+  }'
+```
