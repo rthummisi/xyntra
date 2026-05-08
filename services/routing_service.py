@@ -63,26 +63,30 @@ class RoutingService:
             token_quota=token_quota,
             max_latency_ms=max_latency_ms,
         )
-        cached = await self._get_cached_response(
-            request,
-            provider_name=prepared.decision.selected_provider,
-            model_name=prepared.decision.selected_model,
-            local_only=local_only,
-        )
-        if cached is not None:
-            prepared.decision.metadata["cache_hit"] = True
-            return prepared.decision, cached
+        # Skip cache for agentic requests — tool calls can never come from a cache.
+        use_cache = not request.tool_definitions
+        if use_cache:
+            cached = await self._get_cached_response(
+                request,
+                provider_name=prepared.decision.selected_provider,
+                model_name=prepared.decision.selected_model,
+                local_only=local_only,
+            )
+            if cached is not None:
+                prepared.decision.metadata["cache_hit"] = True
+                return prepared.decision, cached
         try:
             response = await prepared.adapter.complete(prepared.normalized_request)
         except Exception:
             circuit_breaker.record_failure(prepared.decision.selected_provider)
             raise
-        await self._store_cached_response(
-            request,
-            model_name=prepared.decision.selected_model,
-            response=response.content,
-            local_only=local_only,
-        )
+        if use_cache:
+            await self._store_cached_response(
+                request,
+                model_name=prepared.decision.selected_model,
+                response=response.content,
+                local_only=local_only,
+            )
         circuit_breaker.record_success(prepared.decision.selected_provider)
         prepared.decision.metadata["cache_hit"] = False
         return prepared.decision, response
@@ -275,8 +279,13 @@ class RoutingService:
             capability = capability_registry.get(provider_name, provider_model)
             if capability is not None:
                 return capability
+        # Exact model name match
         for capability in capability_registry.list():
             if capability.model == model_name:
+                return capability
+        # Prefix match: "mistral" matches "mistral:7b", "mistral:latest", etc.
+        for capability in capability_registry.list():
+            if capability.model.startswith(model_name + ":"):
                 return capability
         return None
 

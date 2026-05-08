@@ -12,9 +12,15 @@ class ToolCall(BaseModel):
     arguments: dict = Field(default_factory=dict)
 
 
+class ToolDefinition(BaseModel):
+    name: str
+    description: str
+    parameters: dict = Field(default_factory=dict)
+
+
 class UnifiedMessage(BaseModel):
     role: str
-    content: str
+    content: Any = ""  # str for normal messages, list for multipart/tool results
 
 
 class UnifiedRequest(BaseModel):
@@ -22,6 +28,7 @@ class UnifiedRequest(BaseModel):
     messages: list[UnifiedMessage]
     system_prompt: str | None = None
     tools: list[ToolCall] = Field(default_factory=list)
+    tool_definitions: list[ToolDefinition] = Field(default_factory=list)
     attachments: list[dict] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
 

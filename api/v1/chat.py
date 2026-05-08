@@ -11,6 +11,7 @@ from providers.base.adapter import (
     NormalizedResponse,
     StreamChunk,
     ToolCall,
+    ToolDefinition,
     UnifiedMessage,
     UnifiedRequest,
 )
@@ -24,6 +25,7 @@ class ChatRequest(BaseModel):
     messages: list[UnifiedMessage]
     system_prompt: str | None = None
     tools: list[ToolCall] = Field(default_factory=list)
+    tool_definitions: list[ToolDefinition] = Field(default_factory=list)
     attachments: list[dict] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
     strategy: str | None = None
@@ -47,6 +49,7 @@ async def create_chat_completion(
         messages=payload.messages,
         system_prompt=payload.system_prompt,
         tools=payload.tools,
+        tool_definitions=payload.tool_definitions,
         attachments=payload.attachments,
         metadata=payload.metadata,
     )

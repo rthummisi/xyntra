@@ -1,13 +1,16 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -38,7 +41,7 @@ class Settings(BaseSettings):
     local_only_default: bool = False
     local_ollama_base_url: str = "http://ollama:11434"
     ollama_auto_provision: bool = True
-    ollama_default_models: list[str] = ["llama3.2:3b", "nomic-embed-text"]
+    ollama_default_models: list[str] = ["mistral", "nomic-embed-text"]
     semantic_cache_similarity_threshold: float = 0.95
     semantic_cache_embedding_model: str = "nomic-embed-text"
     provider_timeout_seconds: float = 60.0

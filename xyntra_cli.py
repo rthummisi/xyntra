@@ -4,10 +4,12 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import socket
 import subprocess
-import sys
+import time
 import uuid
+import webbrowser
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +28,32 @@ ROOT_DIR = Path(__file__).resolve().parent
 START_SCRIPT = ROOT_DIR / "scripts" / "start_xyntra.sh"
 STATE_DIR = Path.home() / ".xyntra"
 STATE_FILE = STATE_DIR / "cli_state.json"
-DEFAULT_MODEL = "llama3.2:3b"
+DEFAULT_MODEL = "mistral"
 DEFAULT_USER_EMAIL = "cli@xyntra.local"
 DEFAULT_USER_NAME = "Xyntra CLI"
+MARKETING_PATHS = {
+    "landing": "/",
+    "try-xyntra": "/try-xyntra",
+    "pricing": "/pricing",
+    "how-it-works": "/how-it-works",
+    "demo": "/demo",
+}
+ANSI = {
+    "reset": "\033[0m",
+    "bold": "\033[1m",
+    "dim": "\033[2m",
+    "accent": "\033[38;5;208m",
+    "muted": "\033[38;5;244m",
+}
+LOGOMARK = [
+    "            XX            ",
+    "         XXXX  XXXX       ",
+    "      XXXX        XXXX    ",
+    "    XXXX            XXXX  ",
+    "      XXXX        XXXX    ",
+    "         XXXX  XXXX       ",
+    "            XX            ",
+]
 
 
 def main() -> None:
@@ -50,6 +75,11 @@ def main() -> None:
         print_status()
         return
 
+    if args.command == "web":
+        ensure_stack_running()
+        open_marketing_site(args.page)
+        return
+
     if args.command == "run":
         ensure_stack_running()
         result = asyncio.run(
@@ -68,12 +98,16 @@ def main() -> None:
         return
 
     ensure_stack_running()
-    asyncio.run(
-        interactive_chat(
-            model=args.model,
-            local_only=not args.hosted,
+    try:
+        asyncio.run(
+            interactive_chat(
+                model=args.model,
+                local_only=not args.hosted,
+                quiet_welcome=args.quiet_welcome,
+            )
         )
-    )
+    except KeyboardInterrupt:
+        print("\n")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,20 +115,48 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
 
     start = subparsers.add_parser("start", help="Start the full local stack.")
-    start.add_argument("--seed", action="store_true", help="Seed dev data after startup.")
+    start.add_argument(
+        "--seed", action="store_true", help="Seed dev data after startup."
+    )
 
-    subparsers.add_parser("status", help="Show stack readiness and current CLI context.")
+    subparsers.add_parser(
+        "status", help="Show stack readiness and current CLI context."
+    )
+    web = subparsers.add_parser("web", help="Open the local marketing site preview.")
+    web.add_argument(
+        "page",
+        nargs="?",
+        choices=sorted(MARKETING_PATHS),
+        default="landing",
+    )
 
-    run = subparsers.add_parser("run", help="Run a single prompt with retained project context.")
+    run = subparsers.add_parser(
+        "run", help="Run a single prompt with retained project context."
+    )
     run.add_argument("prompt")
     run.add_argument("--model", default=DEFAULT_MODEL)
-    run.add_argument("--hosted", action="store_true", help="Allow hosted routing instead of local-only.")
+    run.add_argument(
+        "--hosted",
+        action="store_true",
+        help="Allow hosted routing instead of local-only.",
+    )
 
-    subparsers.add_parser("reset-context", help="Create a fresh CLI context for the current directory.")
-    subparsers.add_parser("api", help="Run only the FastAPI server in the current process.")
+    subparsers.add_parser(
+        "reset-context", help="Create a fresh CLI context for the current directory."
+    )
+    subparsers.add_parser(
+        "api", help="Run only the FastAPI server in the current process."
+    )
 
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Default interactive model.")
-    parser.add_argument("--hosted", action="store_true", help="Allow hosted routing instead of local-only.")
+    parser.add_argument(
+        "--model", default=DEFAULT_MODEL, help="Default interactive model."
+    )
+    parser.add_argument("--quiet-welcome", action="store_true")
+    parser.add_argument(
+        "--hosted",
+        action="store_true",
+        help="Allow hosted routing instead of local-only.",
+    )
     return parser
 
 
@@ -103,6 +165,10 @@ def api_base() -> str:
     if explicit:
         return explicit.rstrip("/")
     return f"http://localhost:{os.getenv('API_HOST_PORT', '18000')}/api/v1"
+
+
+def ui_base() -> str:
+    return f"http://localhost:{os.getenv('UI_HOST_PORT', '4173')}"
 
 
 def run_start_script(*, seed_dev_data: bool) -> None:
@@ -121,6 +187,28 @@ def ensure_stack_running() -> None:
         run_start_script(seed_dev_data=False)
 
 
+def ensure_ui_running() -> None:
+    target = ui_base()
+    deadline = time.time() + 90
+    last_error: Exception | None = None
+    while time.time() < deadline:
+        try:
+            response = httpx.get(target, timeout=5.0)
+            response.raise_for_status()
+            return
+        except Exception as exc:
+            last_error = exc
+            time.sleep(1)
+    raise SystemExit(f"UI did not become ready: {last_error}")
+
+
+def open_marketing_site(page: str) -> None:
+    ensure_ui_running()
+    target = f"{ui_base()}{MARKETING_PATHS[page]}"
+    webbrowser.open(target)
+    print(target)
+
+
 def load_state() -> dict[str, Any]:
     if not STATE_FILE.exists():
         return {"contexts": {}}
@@ -130,6 +218,34 @@ def load_state() -> dict[str, Any]:
 def save_state(state: dict[str, Any]) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, indent=2))
+
+
+def supports_color() -> bool:
+    return os.getenv("TERM") not in {None, "", "dumb"} and os.isatty(1)
+
+
+def style(text: str, *tokens: str) -> str:
+    if not supports_color():
+        return text
+    prefix = "".join(ANSI[token] for token in tokens)
+    return f"{prefix}{text}{ANSI['reset']}"
+
+
+def centered_line(text: str, width: int | None = None) -> str:
+    terminal_width = width or shutil.get_terminal_size((88, 20)).columns
+    return text.center(terminal_width)
+
+
+def repo_tip(context: dict[str, Any]) -> str:
+    if (Path(context["cwd"]) / ".git").exists():
+        return "Tip: start with /status, then ask: summarize this repo."
+    return "Tip: start with /status or ask what this directory is for."
+
+
+def suggested_first_request(context: dict[str, Any]) -> str:
+    if (Path(context["cwd"]) / ".git").exists():
+        return "explain what this repository does"
+    return "explain what this directory contains"
 
 
 def context_key() -> str:
@@ -145,25 +261,104 @@ def reset_context() -> None:
     save_state(state)
 
 
-async def interactive_chat(*, model: str, local_only: bool) -> None:
+def print_welcome_banner(
+    *,
+    context: dict[str, Any],
+    model: str,
+    local_only: bool,
+    compact: bool,
+) -> None:
+    routing_label = "local-only" if local_only else "mixed"
+    in_repo = (Path(context["cwd"]) / ".git").exists()
+    first_move = "/status"
+    first_request = suggested_first_request(context)
+    print()
+    print(style(centered_line("XYNTRA"), "accent", "bold"))
+    for line in LOGOMARK:
+        print(style(centered_line(line), "muted"))
+    print(style(centered_line("Control Plane for the AI world"), "dim"))
+    print()
+    print(f"{style('Project:', 'bold')}   {context['project_name']}")
+    print(f"{style('Directory:', 'bold')} {context['cwd']}")
+    print(f"{style('Model:', 'bold')}     {model}")
+    print(f"{style('Routing:', 'bold')}   {routing_label}")
+    print()
+    if compact:
+        print(style("Quick start:", "bold"))
+        print(f"- Plain-English request: {first_request}")
+        print("- Reset this session context: /reset")
+        print("- Show the full welcome again: /welcome full")
+        print("- Leave Xyntra and return to your shell: Ctrl+C, /exit, exit, or bye")
+        print(style(repo_tip(context), "dim"))
+        return
+    print(
+        "You can either type a normal request in plain English or use a slash"
+        " command."
+    )
+    print()
+    print(style("Typical next moves:", "bold"))
+    print(
+        "- Ask it to do something: summarize this repo"
+        if in_repo
+        else "- Ask it to do something: explain what this directory contains"
+    )
+    print("- Inspect status: /status")
+    print("- Reset this session context: /reset")
+    print("- Exit: /exit")
+    print()
+    print(style("Sensible first commands:", "bold"))
+    print(f"- {first_move}")
+    print(f"- {first_request}")
+    print("- /reset if you want a fresh session for this directory")
+    print("- Ctrl+C, /exit, exit, or bye to leave Xyntra and return to your shell")
+    print()
+    print(style(repo_tip(context), "dim"))
+
+
+def set_welcome_mode(key: str, mode: str) -> None:
+    state = load_state()
+    if key in state.get("contexts", {}):
+        state["contexts"][key]["welcome_mode"] = mode
+        save_state(state)
+
+
+async def interactive_chat(
+    *, model: str, local_only: bool, quiet_welcome: bool
+) -> None:
     context = await ensure_cli_context()
-    print(f"Xyntra interactive session")
-    print(f"Project: {context['project_name']}")
-    print(f"Directory: {context['cwd']}")
-    print(f"Model: {model}")
-    print(f"Routing: {'local-only' if local_only else 'mixed'}")
-    print("Commands: /status, /reset, /exit")
+    state = load_state()
+    key = context_key()
+    stored_context = state.get("contexts", {}).get(key, {})
+    welcome_mode = stored_context.get("welcome_mode", "auto")
+    compact = bool(stored_context.get("welcome_seen"))
+    if welcome_mode == "full":
+        compact = False
+    if welcome_mode == "compact":
+        compact = True
+    if not quiet_welcome:
+        print_welcome_banner(
+            context=context,
+            model=model,
+            local_only=local_only,
+            compact=compact,
+        )
+    if key in state.get("contexts", {}):
+        state["contexts"][key]["welcome_seen"] = True
+        save_state(state)
 
     while True:
         try:
             prompt = input("\nxyntra> ").strip()
+        except KeyboardInterrupt:
+            print()
+            break
         except EOFError:
             print()
             break
 
         if not prompt:
             continue
-        if prompt in {"/exit", "exit", "quit"}:
+        if prompt in {"/exit", "exit", "quit", "bye"}:
             break
         if prompt == "/status":
             print_status()
@@ -172,6 +367,14 @@ async def interactive_chat(*, model: str, local_only: bool) -> None:
             reset_context()
             context = await ensure_cli_context()
             print("Context reset.")
+            continue
+        if prompt.startswith("/welcome "):
+            value = prompt.split(" ", 1)[1].strip().lower()
+            if value not in {"full", "compact"}:
+                print("Usage: /welcome <full|compact>")
+                continue
+            set_welcome_mode(key, value)
+            print(f"Welcome mode set to {value}.")
             continue
 
         result = await run_prompt(prompt=prompt, model=model, local_only=local_only)
@@ -200,7 +403,9 @@ async def run_prompt(*, prompt: str, model: str, local_only: bool) -> dict[str, 
         payload = response.json()
 
     await append_message(context["session_id"], "user", prompt)
-    await append_message(context["session_id"], "assistant", payload["response"]["content"])
+    await append_message(
+        context["session_id"], "assistant", payload["response"]["content"]
+    )
 
     state = load_state()
     stored = state.setdefault("contexts", {}).setdefault(context_key(), {})
@@ -261,7 +466,11 @@ async def ensure_cli_user(db) -> User:
     user = result.scalar_one_or_none()
     if user is not None:
         return user
-    user = User(email=DEFAULT_USER_EMAIL, display_name=DEFAULT_USER_NAME, is_active=True)
+    user = User(
+        email=DEFAULT_USER_EMAIL,
+        display_name=DEFAULT_USER_NAME,
+        is_active=True,
+    )
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -296,11 +505,16 @@ def print_status() -> None:
     ready = httpx.get(f"{api_base()}/ready", timeout=5.0)
     health = httpx.get(f"{api_base()}/health", timeout=5.0)
     context = load_state().get("contexts", {}).get(context_key())
-    print(json.dumps({
-        "ready": ready.json(),
-        "health": health.json(),
-        "context": context,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "ready": ready.json(),
+                "health": health.json(),
+                "context": context,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

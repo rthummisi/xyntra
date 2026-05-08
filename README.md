@@ -53,13 +53,17 @@ Manual seed command if you need it separately:
 Install the project once so the console commands are available from any working directory:
 
 ```bash
-pip install -e /Users/raghunathvenkataramanathummisi/Downloads/Xyntra
+pip install -e /Users/raghunathvenkataramanathummisi/downloads/projects/xyntra
 ```
 
 CLI commands:
 
 ```bash
 xyntra
+xyntra web
+xyntra web try-xyntra
+xyntra web pricing
+xyntra web demo
 xyntra run "Summarize this repo"
 xyntra exec pwd
 xyntra test
@@ -71,6 +75,7 @@ xyntra-api
 
 CLI behavior:
 - `xyntra` starts the stack if needed, then opens an interactive terminal session
+- `xyntra web` opens the local public-site preview at `/`
 - `xyntra run "..."` sends a one-shot prompt while retaining directory-scoped context
 - `xyntra exec ...` runs a terminal command in the current repo root when available, streams output, and stores the transcript in the active session
 - `xyntra test` auto-detects a default test command (`pytest` for this repo) unless you pass an explicit command
@@ -85,6 +90,9 @@ CLI context retention:
 - command invocations and captured output are persisted into the active backend session
 - request metadata includes `cwd`, hostname, and terminal type
 - the CLI does not capture shell scrollback or arbitrary terminal process state
+
+Repo-local shortcut:
+- from the repo root, `xyntra/web` delegates to `xyntra web`
 
 Default CLI model:
 - interactive/default model: `llama3.2:3b`
