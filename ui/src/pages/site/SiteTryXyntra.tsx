@@ -20,6 +20,7 @@ const trySteps = [
 const commands = [
   "xyntra web",
   "xyntra web pricing",
+  "xyntra validate-contract ./SPEC.md --major-version 1 --kimi-model <kimi-model>",
   "xyntra",
   "xyntra run \"Summarize this repo\"",
   "xyntra exec pwd",

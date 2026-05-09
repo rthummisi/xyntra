@@ -1,5 +1,7 @@
 # xyntra
 
+Version `1.0.0` includes a contract-validation workflow that can take a spec or coding contract, refine it through ChatGPT, then Kimi, then Claude, and emit a major-version contract package with a `WHATS_INCLUDED` companion file.
+
 Local-machine AI execution control plane with a local backend and React control-plane UI.
 
 ## Status
@@ -64,6 +66,7 @@ xyntra web
 xyntra web try-xyntra
 xyntra web pricing
 xyntra web demo
+xyntra validate-contract ./SPEC.md --major-version 1 --kimi-model <kimi-model>
 xyntra run "Summarize this repo"
 xyntra exec pwd
 xyntra test
@@ -76,6 +79,8 @@ xyntra-api
 CLI behavior:
 - `xyntra` starts the stack if needed, then opens an interactive terminal session
 - `xyntra web` opens the local public-site preview at `/`
+- `/coding projects validation ./SPEC.md --major-version 1 --kimi-model <kimi-model>` is available in the interactive shell and is shown up front in the welcome flow
+- `xyntra validate-contract ...` reads a spec or coding contract, runs a refinement chain through ChatGPT, Kimi, and Claude, then writes a major-version contract, `WHATS_INCLUDED` notes, and an audit JSON file
 - `xyntra run "..."` sends a one-shot prompt while retaining directory-scoped context
 - `xyntra exec ...` runs a terminal command in the current repo root when available, streams output, and stores the transcript in the active session
 - `xyntra test` auto-detects a default test command (`pytest` for this repo) unless you pass an explicit command
@@ -98,6 +103,12 @@ Default CLI model:
 - interactive/default model: `llama3.2:3b`
 - default routing mode: `local_only=true`
 - embedding model: `nomic-embed-text`
+
+Contract validation environment:
+- `OPENAI_API_KEY` is required for the ChatGPT stage
+- `KIMI_API_KEY` and either `KIMI_MODEL` or `--kimi-model` are required for the Kimi stage
+- `ANTHROPIC_API_KEY` is required for the Claude stage
+- optional overrides: `OPENAI_BASE_URL`, `KIMI_BASE_URL`, `ANTHROPIC_BASE_URL`
 
 ## Local Services
 

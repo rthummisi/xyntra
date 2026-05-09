@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import shlex
 import shutil
 import socket
 import subprocess
@@ -21,6 +22,7 @@ from models.message import Message
 from models.project import Project
 from models.session import Session
 from models.user import User
+from services.contract_validation_service import contract_validation_service
 from services.project_service import project_service
 from services.session_service import session_service
 
@@ -92,6 +94,32 @@ def main() -> None:
         print(result["response"]["content"])
         return
 
+    if args.command == "validate-contract":
+        ensure_stack_running()
+        result = asyncio.run(
+            validate_contract_file(
+                source_path=args.source,
+                major_version=args.major_version,
+                output_dir=args.output_dir,
+                chatgpt_model=args.chatgpt_model,
+                kimi_model=args.kimi_model,
+                claude_model=args.claude_model,
+            )
+        )
+        print(
+            json.dumps(
+                {
+                    "source_path": result.source_path,
+                    "version": result.version,
+                    "output_path": result.output_path,
+                    "release_notes_path": result.release_notes_path,
+                    "audit_path": result.audit_path,
+                },
+                indent=2,
+            )
+        )
+        return
+
     if args.command == "reset-context":
         reset_context()
         print("Xyntra CLI context reset for this working directory.")
@@ -139,6 +167,36 @@ def build_parser() -> argparse.ArgumentParser:
         "--hosted",
         action="store_true",
         help="Allow hosted routing instead of local-only.",
+    )
+
+    validate = subparsers.add_parser(
+        "validate-contract",
+        help="Refine a spec or coding contract through ChatGPT, Kimi, and Claude.",
+    )
+    validate.add_argument("source", help="Path to the spec or contract file.")
+    validate.add_argument(
+        "--major-version",
+        type=int,
+        default=1,
+        help="Major version number for the generated contract output.",
+    )
+    validate.add_argument(
+        "--output-dir",
+        help="Optional output directory for generated contract versions.",
+    )
+    validate.add_argument(
+        "--chatgpt-model",
+        default="gpt-4o",
+        help="OpenAI model to use for the ChatGPT refinement stage.",
+    )
+    validate.add_argument(
+        "--kimi-model",
+        help="Kimi model to use for the second refinement stage.",
+    )
+    validate.add_argument(
+        "--claude-model",
+        default="claude-sonnet-4-6",
+        help="Anthropic model to use for the final refinement stage.",
     )
 
     subparsers.add_parser(
@@ -286,6 +344,7 @@ def print_welcome_banner(
     if compact:
         print(style("Quick start:", "bold"))
         print(f"- Plain-English request: {first_request}")
+        print("- Contract refinement: /coding projects validation ./SPEC.md")
         print("- Reset this session context: /reset")
         print("- Show the full welcome again: /welcome full")
         print("- Leave Xyntra and return to your shell: Ctrl+C, /exit, exit, or bye")
@@ -309,6 +368,7 @@ def print_welcome_banner(
     print(style("Sensible first commands:", "bold"))
     print(f"- {first_move}")
     print(f"- {first_request}")
+    print("- /coding projects validation ./SPEC.md")
     print("- /reset if you want a fresh session for this directory")
     print("- Ctrl+C, /exit, exit, or bye to leave Xyntra and return to your shell")
     print()
@@ -367,6 +427,14 @@ async def interactive_chat(
             reset_context()
             context = await ensure_cli_context()
             print("Context reset.")
+            continue
+        if prompt.startswith("/coding projects validation"):
+            try:
+                summary = await handle_contract_validation_command(prompt)
+            except ValueError as exc:
+                print(str(exc))
+                continue
+            print(summary)
             continue
         if prompt.startswith("/welcome "):
             value = prompt.split(" ", 1)[1].strip().lower()
@@ -499,6 +567,89 @@ async def append_message(session_id: str, role: str, content: str) -> None:
             content=content,
             attachments=[],
         )
+
+
+async def validate_contract_file(
+    *,
+    source_path: str,
+    major_version: int,
+    output_dir: str | None,
+    chatgpt_model: str,
+    kimi_model: str | None,
+    claude_model: str,
+):
+    return await contract_validation_service.validate_contract(
+        source_path=source_path,
+        major_version=major_version,
+        output_dir=output_dir,
+        chatgpt_model=chatgpt_model,
+        kimi_model=kimi_model,
+        claude_model=claude_model,
+    )
+
+
+async def handle_contract_validation_command(prompt: str) -> str:
+    prefix = "/coding projects validation"
+    remainder = prompt[len(prefix) :].strip()
+    if not remainder:
+        raise ValueError(
+            "Usage: /coding projects validation <path> [--major-version N]"
+        )
+
+    tokens = shlex.split(remainder)
+    source_path = tokens[0]
+    major_version = 1
+    output_dir: str | None = None
+    chatgpt_model = "gpt-4o"
+    kimi_model: str | None = None
+    claude_model = "claude-sonnet-4-6"
+
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--major-version":
+            index += 1
+            if index >= len(tokens):
+                raise ValueError("Missing value for --major-version.")
+            major_version = int(tokens[index])
+        elif token == "--output-dir":
+            index += 1
+            if index >= len(tokens):
+                raise ValueError("Missing value for --output-dir.")
+            output_dir = tokens[index]
+        elif token == "--chatgpt-model":
+            index += 1
+            if index >= len(tokens):
+                raise ValueError("Missing value for --chatgpt-model.")
+            chatgpt_model = tokens[index]
+        elif token == "--kimi-model":
+            index += 1
+            if index >= len(tokens):
+                raise ValueError("Missing value for --kimi-model.")
+            kimi_model = tokens[index]
+        elif token == "--claude-model":
+            index += 1
+            if index >= len(tokens):
+                raise ValueError("Missing value for --claude-model.")
+            claude_model = tokens[index]
+        else:
+            raise ValueError(f"Unsupported option: {token}")
+        index += 1
+
+    result = await validate_contract_file(
+        source_path=source_path,
+        major_version=major_version,
+        output_dir=output_dir,
+        chatgpt_model=chatgpt_model,
+        kimi_model=kimi_model,
+        claude_model=claude_model,
+    )
+    return (
+        f"Major contract version {result.version} created.\n"
+        f"Contract: {result.output_path}\n"
+        f"What's included: {result.release_notes_path}\n"
+        f"Audit: {result.audit_path}"
+    )
 
 
 def print_status() -> None:
