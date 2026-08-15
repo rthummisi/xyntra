@@ -59,26 +59,48 @@ def select_model(
             fallback_chain=[("ollama", "llama3.2:1b")],
         )
 
-    # Cloud API selection based on complexity
-    api_map = {
-        TaskComplexity.EXTREME:  ("anthropic", "claude-opus-4-7"),
-        TaskComplexity.COMPLEX:  ("anthropic", "claude-sonnet-4-6"),
-        TaskComplexity.MODERATE: ("openai",    "gpt-4o-mini"),
-        TaskComplexity.TRIVIAL:  ("groq",      "llama-3.1-8b-instant"),
-    }
-    provider, model = api_map[classification.complexity]
+    # Cloud API selection: Inkling owns reasoning/analysis, Nemotron owns code.
+    # Both are ranked highest in the capability registry so routing naturally
+    # surfaces them first; the explicit map below locks that preference in the
+    # kernel path as well.
+    is_coding = (
+        classification.task_type == "tool_use"
+        or "coding" in classification.agent_roles_suggested
+    )
 
-    fallbacks_map = {
-        TaskComplexity.EXTREME:  [("openai", "gpt-4o"), ("gemini", "gemini-2.5-pro")],
-        TaskComplexity.COMPLEX:  [("openai", "gpt-4o"), ("gemini", "gemini-2.0-flash")],
-        TaskComplexity.MODERATE: [("anthropic", "claude-haiku-4-5"), ("groq", "llama-3.3-70b-versatile")],
-        TaskComplexity.TRIVIAL:  [("openai", "gpt-3.5-turbo")],
-    }
+    if classification.complexity == TaskComplexity.EXTREME:
+        if is_coding:
+            provider, model = "nemotron", "llama-3.1-nemotron-70b-instruct"
+            fallbacks = [("inkling", "inkling-1"), ("anthropic", "claude-opus-4-7"), ("openai", "gpt-4o")]
+        else:
+            provider, model = "inkling", "inkling-1"
+            fallbacks = [("anthropic", "claude-opus-4-7"), ("gemini", "gemini-2.5-pro"), ("openai", "gpt-4o")]
+    elif classification.complexity == TaskComplexity.COMPLEX:
+        if is_coding:
+            provider, model = "nemotron", "llama-3.1-nemotron-70b-instruct"
+            fallbacks = [("inkling", "inkling-1-mini"), ("anthropic", "claude-sonnet-4-6"), ("openai", "gpt-4o")]
+        else:
+            provider, model = "inkling", "inkling-1"
+            fallbacks = [("anthropic", "claude-sonnet-4-6"), ("openai", "gpt-4o"), ("gemini", "gemini-2.0-flash")]
+    elif classification.complexity == TaskComplexity.MODERATE:
+        if is_coding:
+            provider, model = "nemotron", "llama-3.1-nemotron-8b-instruct"
+            fallbacks = [("openai", "gpt-4o-mini"), ("groq", "llama-3.3-70b-versatile")]
+        else:
+            provider, model = "inkling", "inkling-1-mini"
+            fallbacks = [("openai", "gpt-4o-mini"), ("anthropic", "claude-haiku-4-5")]
+    else:  # TRIVIAL
+        provider, model = "groq", "llama-3.1-8b-instant"
+        fallbacks = [("openai", "gpt-3.5-turbo")]
 
     return ModelSelection(
         provider=provider,
         model=model,
         quantization="api",
-        rationale=f"Cloud API | complexity={classification.complexity.value} | sensitivity={classification.sensitivity.value}",
-        fallback_chain=fallbacks_map.get(classification.complexity, []),
+        rationale=(
+            f"Cloud API | complexity={classification.complexity.value}"
+            f" | {'code' if is_coding else 'reasoning'} path"
+            f" | sensitivity={classification.sensitivity.value}"
+        ),
+        fallback_chain=fallbacks,
     )

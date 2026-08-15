@@ -79,8 +79,8 @@ ROLE_SPECS: dict[AgentRole, AgentSpec] = {
     ),
     AgentRole.REASONING: AgentSpec(
         role=AgentRole.REASONING,
-        preferred_provider="anthropic",
-        preferred_model="claude-opus-4-7",
+        preferred_provider="inkling",
+        preferred_model="inkling-1",
         system_prompt="You are a deep reasoning agent. Think step by step, explore edge cases, and provide rigorous analysis.",
         max_tokens=16384,
         temperature=0.1,
@@ -97,8 +97,8 @@ ROLE_SPECS: dict[AgentRole, AgentSpec] = {
     ),
     AgentRole.CODING: AgentSpec(
         role=AgentRole.CODING,
-        preferred_provider="openai",
-        preferred_model="gpt-4o",
+        preferred_provider="nemotron",
+        preferred_model="llama-3.1-nemotron-70b-instruct",
         system_prompt="You are a coding agent. Write clean, correct, production-ready code with minimal explanation.",
         max_tokens=8192,
         temperature=0.2,
@@ -116,8 +116,8 @@ ROLE_SPECS: dict[AgentRole, AgentSpec] = {
     ),
     AgentRole.VALIDATION: AgentSpec(
         role=AgentRole.VALIDATION,
-        preferred_provider="groq",
-        preferred_model="llama-3.3-70b-versatile",
+        preferred_provider="nemotron",
+        preferred_model="llama-3.1-nemotron-8b-instruct",
         system_prompt="You are a validation agent. Check outputs for correctness, completeness, and consistency. Flag issues.",
         max_tokens=2048,
         temperature=0.0,
@@ -125,8 +125,8 @@ ROLE_SPECS: dict[AgentRole, AgentSpec] = {
     ),
     AgentRole.CRITIC: AgentSpec(
         role=AgentRole.CRITIC,
-        preferred_provider="grok",
-        preferred_model="grok-3",
+        preferred_provider="inkling",
+        preferred_model="inkling-1",
         system_prompt="You are a critic agent. Identify weaknesses, assumptions, and blind spots in the proposed solution.",
         max_tokens=4096,
         temperature=0.6,
