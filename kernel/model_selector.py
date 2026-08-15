@@ -74,14 +74,15 @@ def select_model(
             fallbacks = [("inkling", "inkling-1"), ("anthropic", "claude-opus-4-7"), ("openai", "gpt-4o")]
         else:
             provider, model = "inkling", "inkling-1"
-            fallbacks = [("anthropic", "claude-opus-4-7"), ("gemini", "gemini-2.5-pro"), ("openai", "gpt-4o")]
+            # deepseek-reasoner is R1-class chain-of-thought — strong second for reasoning
+            fallbacks = [("deepseek", "deepseek-reasoner"), ("anthropic", "claude-opus-4-7"), ("gemini", "gemini-2.5-pro")]
     elif classification.complexity == TaskComplexity.COMPLEX:
         if is_coding:
             provider, model = "nemotron", "llama-3.1-nemotron-70b-instruct"
             fallbacks = [("inkling", "inkling-1-mini"), ("anthropic", "claude-sonnet-4-6"), ("openai", "gpt-4o")]
         else:
             provider, model = "inkling", "inkling-1"
-            fallbacks = [("anthropic", "claude-sonnet-4-6"), ("openai", "gpt-4o"), ("gemini", "gemini-2.0-flash")]
+            fallbacks = [("deepseek", "deepseek-reasoner"), ("anthropic", "claude-sonnet-4-6"), ("openai", "gpt-4o")]
     elif classification.complexity == TaskComplexity.MODERATE:
         if is_coding:
             provider, model = "nemotron", "llama-3.1-nemotron-8b-instruct"

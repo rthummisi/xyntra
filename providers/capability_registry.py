@@ -86,12 +86,13 @@ LOCAL_EMBED = _opts(
 # Priority ladder — higher number = preferred by routing when no explicit model requested.
 # Inkling and Nemotron are prioritised so they accumulate usage and customisation data.
 # Cloud giants are mid-tier; local/economy providers are fallback.
-_P_INKLING  = 100   # reasoning / thinking — top priority
-_P_NEMOTRON = 90    # code / STEM — second priority
-_P_QWEN     = 70    # long-context / multilingual — third
-_P_CLOUD    = 50    # anthropic / openai / gemini / grok / mistral / deepseek
-_P_GROQ     = 40    # fast cloud inference
-_P_LOCAL    = 20    # ollama (local GPU)
+_P_INKLING       = 100   # reasoning / thinking — top priority
+_P_NEMOTRON      = 90    # code / STEM — second priority
+_P_DEEPSEEK_R    = 85    # deepseek-reasoner (R1 chain-of-thought) — strong fallback for reasoning
+_P_QWEN          = 70    # long-context / multilingual — fourth
+_P_CLOUD         = 50    # anthropic / openai / gemini / grok / mistral / deepseek-chat
+_P_GROQ          = 40    # fast cloud inference
+_P_LOCAL         = 20    # ollama (local GPU)
 
 
 def _seed_capabilities() -> list[ModelCapability]:
@@ -170,8 +171,8 @@ def _seed_capabilities() -> list[ModelCapability]:
         _build_capabilities(
             "deepseek",
             [
-                ("deepseek-chat",     128_000, "high",  _opts(latency="fast",  priority=_P_CLOUD)),
-                ("deepseek-reasoner", 128_000, "high",  _opts(tools=False,     priority=_P_CLOUD)),
+                ("deepseek-chat",     128_000, "high",  _opts(latency="fast",        priority=_P_CLOUD)),
+                ("deepseek-reasoner", 128_000, "high",  _opts(tools=False,           priority=_P_DEEPSEEK_R)),
                 ("deepseek-r1:7b",     32_000, "local", _opts(local=True, cost="local", latency="local", priority=_P_LOCAL)),
                 ("deepseek-r1:14b",    32_000, "local", _opts(local=True, cost="local", latency="local", priority=_P_LOCAL)),
                 ("deepseek-r1:32b",    32_000, "local", _opts(local=True, cost="local", latency="local", priority=_P_LOCAL)),
