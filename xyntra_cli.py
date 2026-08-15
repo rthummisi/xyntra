@@ -242,27 +242,40 @@ def _docker_running() -> bool:
         return False
 
 
-def run_start_script(*, seed_dev_data: bool) -> None:
-    if not _docker_running():
-        print(
-            "\n"
-            "  Docker Desktop is not running.\n"
-            "  Please open Docker Desktop and wait for it to start, then run:\n"
-            "\n"
-            "      xyntra\n"
-            "\n"
-            "  Or run the API server directly (no database/Redis):\n"
-            "\n"
-            "      xyntra api\n"
-        )
+def _ensure_docker_running(timeout: int = 120) -> None:
+    if _docker_running():
+        return
+
+    print("[xyntra] Docker Desktop is not running — starting it now...")
+    try:
+        subprocess.run(["open", "-a", "Docker"], check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("[xyntra] Could not launch Docker Desktop automatically.")
+        print("         Please open Docker Desktop manually and run xyntra again.")
         raise SystemExit(1)
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if _docker_running():
+            print("[xyntra] Docker Desktop is ready.")
+            return
+        remaining = int(deadline - time.time())
+        print(f"[xyntra] Waiting for Docker Desktop... ({remaining}s remaining)", end="\r", flush=True)
+        time.sleep(3)
+
+    print("\n[xyntra] Docker Desktop did not become ready in time. Please try again.")
+    raise SystemExit(1)
+
+
+def run_start_script(*, seed_dev_data: bool) -> None:
+    _ensure_docker_running()
     env = os.environ.copy()
     if seed_dev_data:
         env["SEED_DEV_DATA"] = "true"
     try:
         subprocess.run([str(START_SCRIPT)], cwd=ROOT_DIR, env=env, check=True)
     except subprocess.CalledProcessError as exc:
-        print(f"\n  Stack startup failed (exit {exc.returncode}). Check Docker Desktop is healthy and try again.\n")
+        print(f"\n[xyntra] Stack startup failed (exit {exc.returncode}). Check Docker Desktop is healthy and try again.\n")
         raise SystemExit(1) from None
 
 
