@@ -257,13 +257,13 @@ def _ensure_docker_running(timeout: int = 120) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
         if _docker_running():
-            print("[xyntra] Docker Desktop is ready.")
+            print("\r\033[2K[xyntra] Docker Desktop is ready.", flush=True)
             return
         remaining = int(deadline - time.time())
-        print(f"[xyntra] Waiting for Docker Desktop... ({remaining}s remaining)", end="\r", flush=True)
+        print(f"\r\033[2K[xyntra] Waiting for Docker Desktop... ({remaining}s)", end="", flush=True)
         time.sleep(3)
 
-    print("\n[xyntra] Docker Desktop did not become ready in time. Please try again.")
+    print("\r\033[2K[xyntra] Docker Desktop did not become ready in time. Please try again.")
     raise SystemExit(1)
 
 

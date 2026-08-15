@@ -48,14 +48,14 @@ fi
 log "Ensuring environment file exists"
 cp -n .env.example .env || true
 
-log "Building API and worker images"
-docker compose build api worker >/dev/null
+log "Building API and worker images (first run may take a few minutes)"
+docker compose build api worker
 
-log "Starting infrastructure services"
+log "Starting infrastructure services (postgres, redis, ollama)"
 docker compose up -d postgres redis ollama
 
-log "Waiting for PostgreSQL and Redis health"
-docker compose up -d postgres redis >/dev/null
+log "Waiting for PostgreSQL and Redis to be healthy"
+docker compose up -d postgres redis 2>/dev/null || true
 
 log "Ensuring database extension and test database"
 docker compose exec -T postgres psql -U xyntra -d xyntra -c "CREATE EXTENSION IF NOT EXISTS vector;" >/dev/null
