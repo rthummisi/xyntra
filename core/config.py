@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     mistral_base_url: str = "https://api.mistral.ai"
     deepseek_base_url: str = "https://api.deepseek.com"
     groq_base_url: str = "https://api.groq.com"
+    inkling_base_url: str = "https://api.inkling.ai"
+    nemotron_base_url: str = "https://integrate.api.nvidia.com"
+    qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode"
 
     anthropic_api_key: str = ""
     openai_api_key: str = ""
@@ -61,6 +64,9 @@ class Settings(BaseSettings):
     mistral_api_key: str = ""
     deepseek_api_key: str = ""
     groq_api_key: str = ""
+    inkling_api_key: str = ""
+    nemotron_api_key: str = ""
+    qwen_api_key: str = ""
 
 
 @lru_cache(maxsize=1)

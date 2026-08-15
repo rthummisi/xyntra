@@ -249,6 +249,23 @@ def _seed_capabilities() -> list[ModelCapability]:
             ],
         )
     )
+    capabilities.extend(
+        _build_capabilities(
+            "qwen",
+            [
+                ("qwen-max", 32_000, "premium", _opts(cost="premium")),
+                ("qwen-plus", 128_000, "high", _opts()),
+                ("qwen-turbo", 128_000, "medium", FAST_ECON),
+                ("qwen2.5-72b-instruct", 128_000, "high", _opts(cost="premium")),
+                ("qwen2.5-32b-instruct", 128_000, "high", _opts()),
+                ("qwen2.5-14b-instruct", 128_000, "medium", FAST_ECON),
+                ("qwen2.5-7b-instruct", 128_000, "medium", FAST_ECON),
+                ("qwen2.5-coder-32b-instruct", 128_000, "high", _opts()),
+                ("qwen2.5-coder-7b-instruct", 128_000, "medium", FAST_ECON),
+                ("qwq-32b-preview", 32_000, "high", _opts(tools=False)),
+            ],
+        )
+    )
     return capabilities
 
 

@@ -11,6 +11,7 @@ from providers.mistral_adapter import MistralAdapter
 from providers.nemotron_adapter import NemotronAdapter
 from providers.ollama_adapter import OllamaAdapter
 from providers.openai_adapter import OpenAIAdapter
+from providers.qwen_adapter import QwenAdapter
 
 
 class ProviderRegistry:
@@ -26,6 +27,7 @@ class ProviderRegistry:
             "groq": GroqAdapter(),
             "inkling": InklingAdapter(),
             "nemotron": NemotronAdapter(),
+            "qwen": QwenAdapter(),
         }
 
     def get(self, provider_name: str) -> BaseAdapter:

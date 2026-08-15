@@ -49,8 +49,13 @@ _MATRIX: list[ModelHWRequirement] = [
     ModelHWRequirement("gemini",    "gemini-2.5-pro",            vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
     ModelHWRequirement("grok",      "grok-3",                    vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
     ModelHWRequirement("groq",      "llama-3.3-70b-versatile",   vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
-    ModelHWRequirement("inkling",   "inkling-1",                 vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
+    ModelHWRequirement("inkling",   "inkling-1",                    vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
+    ModelHWRequirement("inkling",   "inkling-1-mini",               vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
     ModelHWRequirement("nemotron",  "nemotron-4-340b-instruct-api", vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
+    ModelHWRequirement("qwen",      "qwen-max",                     vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
+    ModelHWRequirement("qwen",      "qwen-plus",                    vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
+    ModelHWRequirement("qwen",      "qwen-turbo",                   vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
+    ModelHWRequirement("qwen",      "qwen2.5-72b-instruct",         vram_full_gb=0, vram_8bit_gb=0, vram_4bit_gb=0, min_ram_gb=0, supports_cpu_only=True),
 ]
 
 _INDEX: dict[str, ModelHWRequirement] = {
