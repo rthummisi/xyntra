@@ -15,16 +15,8 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from sqlalchemy import select
 
-from core.database import AsyncSessionLocal
-from models.message import Message
-from models.project import Project
-from models.session import Session
-from models.user import User
 from services.contract_validation_service import contract_validation_service
-from services.project_service import project_service
-from services.session_service import session_service
 
 ROOT_DIR = Path(__file__).resolve().parent
 START_SCRIPT = ROOT_DIR / "scripts" / "start_xyntra.sh"
@@ -507,16 +499,14 @@ async def run_prompt(*, prompt: str, model: str, local_only: bool) -> dict[str, 
                     "hostname": socket.gethostname(),
                     "terminal": os.getenv("TERM", "unknown"),
                 },
-                "messages": await build_messages(context["session_id"], prompt),
+                "messages": await build_messages(context["project_id"], context["session_id"], prompt),
             },
         )
         response.raise_for_status()
         payload = response.json()
 
-    await append_message(context["session_id"], "user", prompt)
-    await append_message(
-        context["session_id"], "assistant", payload["response"]["content"]
-    )
+    await append_message(context["project_id"], context["session_id"], "user", prompt)
+    await append_message(context["project_id"], context["session_id"], "assistant", payload["response"]["content"])
 
     state = load_state()
     stored = state.setdefault("contexts", {}).setdefault(context_key(), {})
@@ -532,84 +522,75 @@ async def ensure_cli_context() -> dict[str, Any]:
     key = context_key()
     stored = contexts.get(key)
 
-    async with AsyncSessionLocal() as db:
-        user = await ensure_cli_user(db)
+    cwd = key
+    project_name = Path(cwd).name or "xyntra-project"
 
-        if stored:
-            project = await db.get(Project, uuid.UUID(stored["project_id"]))
-            session = await db.get(Session, uuid.UUID(stored["session_id"]))
-            if project is not None and session is not None:
-                stored["project_name"] = project.name
-                save_state(state)
-                return stored
-
-        cwd = key
-        project_name = Path(cwd).name or "xyntra-project"
-        project = await project_service.create_project(
-            db,
-            owner_id=user.id,
-            name=f"{project_name}",
-            description=f"CLI context for {cwd}",
-            local_only=True,
+    branch: str | None = None
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=cwd, capture_output=True, text=True, timeout=3,
         )
-        session = await session_service.create_session(
-            db,
-            project_id=project.id,
-            user_id=user.id,
-            title=f"CLI session for {project_name}",
+        if r.returncode == 0:
+            branch = r.stdout.strip()
+    except Exception:
+        pass
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            f"{api_base()}/cli/context/ensure",
+            json={
+                "cwd": cwd,
+                "project_name": project_name,
+                "branch": branch,
+                "local_only": True,
+                "project_id": stored.get("project_id") if stored else None,
+                "session_id": stored.get("session_id") if stored else None,
+            },
         )
-        context = {
-            "cwd": cwd,
-            "project_id": str(project.id),
-            "project_name": project.name,
-            "session_id": str(session.id),
-            "user_id": str(user.id),
-            "last_model": DEFAULT_MODEL,
-            "local_only": True,
-        }
-        contexts[key] = context
-        save_state(state)
-        return context
+        resp.raise_for_status()
+        data = resp.json()
+
+    context = {
+        "cwd": cwd,
+        "project_id": data["project_id"],
+        "project_name": data["project_name"],
+        "session_id": data["session_id"],
+        "user_id": data["user_id"],
+        "last_model": stored.get("last_model", DEFAULT_MODEL) if stored else DEFAULT_MODEL,
+        "local_only": True,
+    }
+    contexts[key] = context
+    save_state(state)
+    return context
 
 
-async def ensure_cli_user(db) -> User:
-    result = await db.execute(select(User).where(User.email == DEFAULT_USER_EMAIL))
-    user = result.scalar_one_or_none()
-    if user is not None:
-        return user
-    user = User(
-        email=DEFAULT_USER_EMAIL,
-        display_name=DEFAULT_USER_NAME,
-        is_active=True,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-
-async def build_messages(session_id: str, prompt: str) -> list[dict[str, str]]:
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Message)
-            .where(Message.session_id == uuid.UUID(session_id))
-            .order_by(Message.sequence_number.asc())
-        )
-        history = list(result.scalars().all())
-    messages = [{"role": item.role, "content": item.content} for item in history]
+async def build_messages(project_id: str, session_id: str, prompt: str) -> list[dict[str, str]]:
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{api_base()}/projects/{project_id}/sessions/{session_id}/messages"
+            )
+            resp.raise_for_status()
+            history = resp.json()
+        messages = [{"role": m["role"], "content": m["content"]} for m in history]
+    except Exception:
+        messages = []
     messages.append({"role": "user", "content": prompt})
     return messages
 
 
-async def append_message(session_id: str, role: str, content: str) -> None:
-    async with AsyncSessionLocal() as db:
-        await session_service.add_message(
-            db,
-            session_id=uuid.UUID(session_id),
-            role=role,
-            content=content,
-            attachments=[],
-        )
+async def append_message(project_id: str, session_id: str, role: str, content: str) -> None:
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(
+                f"{api_base()}/projects/{project_id}/sessions/{session_id}/messages",
+                json={"role": role, "content": content},
+            )
+    except Exception:
+        pass
+
+
 
 
 async def validate_contract_file(
