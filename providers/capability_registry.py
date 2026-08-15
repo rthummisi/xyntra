@@ -17,6 +17,11 @@ class ModelCapability(BaseModel):
     local_only: bool = False
     cost_tier: str = "standard"
     latency_tier: str = "standard"
+    # hardware requirements (0 = API-only, no local GPU needed)
+    vram_gb_full: float = 0.0
+    vram_gb_8bit: float = 0.0
+    vram_gb_4bit: float = 0.0
+    min_ram_gb: float = 0.0
 
 
 CapabilitySeed = tuple[str, int, str, dict]
@@ -222,6 +227,25 @@ def _seed_capabilities() -> list[ModelCapability]:
                     "high",
                     _opts(tools=False, latency="fast"),
                 ),
+            ],
+        )
+    )
+    capabilities.extend(
+        _build_capabilities(
+            "inkling",
+            [
+                ("inkling-1", 128_000, "high", _opts(cost="premium")),
+                ("inkling-1-mini", 32_000, "medium", FAST_ECON),
+            ],
+        )
+    )
+    capabilities.extend(
+        _build_capabilities(
+            "nemotron",
+            [
+                ("nemotron-4-340b-instruct-api", 4_096, "premium", _opts(cost="premium", tools=False)),
+                ("llama-3.1-nemotron-70b-instruct", 128_000, "high", _opts(cost="premium")),
+                ("llama-3.1-nemotron-8b-instruct", 128_000, "medium", FAST_ECON),
             ],
         )
     )

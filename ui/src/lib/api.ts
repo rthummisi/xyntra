@@ -120,6 +120,26 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  hwLive: () => request<Record<string, unknown>>("/hardware/live"),
+  hwSnapshot: () => request<Record<string, unknown>>("/hardware/snapshot"),
+  hwModelsFitting: (vramGb: number) =>
+    request<Array<Record<string, unknown>>>(`/hardware/models/fitting?vram_gb=${vramGb}`),
+  agents: () => request<Array<Record<string, unknown>>>("/agents"),
+  activeAgents: () => request<Record<string, unknown>>("/agents/active"),
+  agentRoles: () => request<Array<Record<string, unknown>>>("/agents/roles/catalog"),
+  ipcHistory: () => request<Array<Record<string, unknown>>>("/agents/ipc/history"),
+  killAgent: (agentId: string) =>
+    request<Record<string, unknown>>(`/agents/${agentId}`, { method: "DELETE" }),
+  runMission: (payload: Record<string, unknown>) =>
+    request<Record<string, unknown>>("/agents/missions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  kernelDecide: (payload: Record<string, unknown>) =>
+    request<Record<string, unknown>>("/kernel/decide", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export { API_BASE };

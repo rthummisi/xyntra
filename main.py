@@ -7,6 +7,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 
+from api.v1.agents import router as agents_router
 from api.v1.analytics import router as analytics_router
 from api.v1.approvals import router as approvals_router
 from api.v1.artifacts import router as artifacts_router
@@ -17,7 +18,9 @@ from api.v1.compare import router as compare_router
 from api.v1.context import router as context_router
 from api.v1.evals import router as evals_router
 from api.v1.events import router as events_router
+from api.v1.hardware import router as hardware_router
 from api.v1.health import router as health_router
+from api.v1.kernel import router as kernel_router
 from api.v1.memory import router as memory_router
 from api.v1.openai_compat import router as openai_compat_router
 from api.v1.policies import router as policies_router
@@ -47,14 +50,17 @@ async def lifespan(_: FastAPI):
     logger = logging.getLogger("xyntra.bootstrap")
     logger.info("application_starting")
     await provision_ollama_models(settings)
+    from hardware.health_monitor import hw_monitor
+    hw_monitor.start()
     yield
+    hw_monitor.stop()
     await redis_client.aclose()
     logger.info("application_stopped")
 
 
 app = FastAPI(
     title="xyntra",
-    version="0.1.0",
+    version="2.0.0",
     debug=settings.debug,
     lifespan=lifespan,
 )
@@ -86,6 +92,9 @@ app.include_router(security_router, prefix=settings.api_v1_prefix)
 app.include_router(sessions_router, prefix=settings.api_v1_prefix)
 app.include_router(tasks_router, prefix=settings.api_v1_prefix)
 app.include_router(webhooks_router, prefix=settings.api_v1_prefix)
+app.include_router(agents_router, prefix=settings.api_v1_prefix)
+app.include_router(hardware_router, prefix=settings.api_v1_prefix)
+app.include_router(kernel_router, prefix=settings.api_v1_prefix)
 
 
 def run() -> None:

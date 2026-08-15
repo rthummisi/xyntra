@@ -6,7 +6,9 @@ from providers.deepseek_adapter import DeepSeekAdapter
 from providers.gemini_adapter import GeminiAdapter
 from providers.grok_adapter import GrokAdapter
 from providers.groq_adapter import GroqAdapter
+from providers.inkling_adapter import InklingAdapter
 from providers.mistral_adapter import MistralAdapter
+from providers.nemotron_adapter import NemotronAdapter
 from providers.ollama_adapter import OllamaAdapter
 from providers.openai_adapter import OpenAIAdapter
 
@@ -22,6 +24,8 @@ class ProviderRegistry:
             "mistral": MistralAdapter(),
             "deepseek": DeepSeekAdapter(),
             "groq": GroqAdapter(),
+            "inkling": InklingAdapter(),
+            "nemotron": NemotronAdapter(),
         }
 
     def get(self, provider_name: str) -> BaseAdapter:

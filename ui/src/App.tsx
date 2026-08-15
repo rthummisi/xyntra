@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { Chrome } from "./components/Chrome";
 import { MarketingShell } from "./components/MarketingShell";
+import AgentFleet from "./pages/AgentFleet";
 import ApiKeys from "./pages/ApiKeys";
 import Approvals from "./pages/Approvals";
 import Artifacts from "./pages/Artifacts";
@@ -10,6 +11,8 @@ import ContextInspector from "./pages/ContextInspector";
 import Dashboard from "./pages/Dashboard";
 import EventLog from "./pages/EventLog";
 import Evals from "./pages/Evals";
+import HardwareCockpit from "./pages/HardwareCockpit";
+import KernelDecision from "./pages/KernelDecision";
 import Leaderboard from "./pages/Leaderboard";
 import Memory from "./pages/Memory";
 import Policies from "./pages/Policies";
@@ -62,6 +65,9 @@ export default function App() {
       </Route>
       <Route element={<ConsoleShell />}>
         <Route path={APP_PREFIX} element={<Dashboard />} />
+        <Route path={`${APP_PREFIX}/agent-fleet`} element={<AgentFleet />} />
+        <Route path={`${APP_PREFIX}/hardware`} element={<HardwareCockpit />} />
+        <Route path={`${APP_PREFIX}/kernel`} element={<KernelDecision />} />
         <Route path={`${APP_PREFIX}/chat`} element={<Chat />} />
         <Route path={`${APP_PREFIX}/projects`} element={<Projects />} />
         <Route path={`${APP_PREFIX}/sessions`} element={<Sessions />} />
