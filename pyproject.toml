@@ -41,7 +41,7 @@ xyntra-api = "main:run"
 
 [tool.black]
 line-length = 88
-target-version = ["py312"]
+target-version = ["py311", "py312", "py313"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -49,7 +49,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
@@ -63,12 +63,16 @@ py-modules = ["main", "xyntra_cli"]
 
 [tool.setuptools.packages.find]
 include = [
+  "agents*",
   "api*",
   "artifacts*",
   "context*",
   "core*",
+  "hardware*",
+  "kernel*",
   "memory*",
   "models*",
+  "orchestrator*",
   "policies*",
   "providers*",
   "routing*",
