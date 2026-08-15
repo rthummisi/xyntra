@@ -229,11 +229,41 @@ def ui_base() -> str:
     return f"http://localhost:{os.getenv('UI_HOST_PORT', '4173')}"
 
 
+def _docker_running() -> bool:
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 def run_start_script(*, seed_dev_data: bool) -> None:
+    if not _docker_running():
+        print(
+            "\n"
+            "  Docker Desktop is not running.\n"
+            "  Please open Docker Desktop and wait for it to start, then run:\n"
+            "\n"
+            "      xyntra\n"
+            "\n"
+            "  Or run the API server directly (no database/Redis):\n"
+            "\n"
+            "      xyntra api\n"
+        )
+        raise SystemExit(1)
     env = os.environ.copy()
     if seed_dev_data:
         env["SEED_DEV_DATA"] = "true"
-    subprocess.run([str(START_SCRIPT)], cwd=ROOT_DIR, env=env, check=True)
+    try:
+        subprocess.run([str(START_SCRIPT)], cwd=ROOT_DIR, env=env, check=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"\n  Stack startup failed (exit {exc.returncode}). Check Docker Desktop is healthy and try again.\n")
+        raise SystemExit(1) from None
 
 
 def ensure_stack_running() -> None:
