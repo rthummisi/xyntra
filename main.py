@@ -8,6 +8,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from api.v1.agents import router as agents_router
+from api.v1.tokens import router as tokens_router
 from api.v1.analytics import router as analytics_router
 from api.v1.approvals import router as approvals_router
 from api.v1.artifacts import router as artifacts_router
@@ -95,6 +96,7 @@ app.include_router(webhooks_router, prefix=settings.api_v1_prefix)
 app.include_router(agents_router, prefix=settings.api_v1_prefix)
 app.include_router(hardware_router, prefix=settings.api_v1_prefix)
 app.include_router(kernel_router, prefix=settings.api_v1_prefix)
+app.include_router(tokens_router, prefix=settings.api_v1_prefix)
 
 
 def run() -> None:

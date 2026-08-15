@@ -21,6 +21,7 @@ from routing.context_escalator import context_escalator
 from routing.fallback import build_fallback_chain
 from routing.latency_sla import latency_sla_enforcer
 from routing.strategies import strategy_selector
+from memory.token_ledger import token_ledger
 from services.policy_service import PolicyEvaluation, policy_service
 from services.semantic_cache_service import semantic_cache_service
 
@@ -74,6 +75,7 @@ class RoutingService:
             )
             if cached is not None:
                 prepared.decision.metadata["cache_hit"] = True
+                self._record_tokens(request, prepared.decision, cached, cache_hit=True)
                 return prepared.decision, cached
         try:
             response = await prepared.adapter.complete(prepared.normalized_request)
@@ -89,6 +91,7 @@ class RoutingService:
             )
         circuit_breaker.record_success(prepared.decision.selected_provider)
         prepared.decision.metadata["cache_hit"] = False
+        self._record_tokens(request, prepared.decision, response, cache_hit=False)
         return prepared.decision, response
 
     def stream_route(
@@ -410,6 +413,30 @@ class RoutingService:
             )
         except Exception:
             return
+
+    @staticmethod
+    def _record_tokens(
+        request: UnifiedRequest,
+        decision: RoutingDecision,
+        response: NormalizedResponse,
+        *,
+        cache_hit: bool,
+    ) -> None:
+        try:
+            task_text = " ".join(
+                m.content if isinstance(m.content, str) else ""
+                for m in request.messages
+            ).strip()
+            token_ledger.record(
+                task_summary=task_text,
+                provider=decision.selected_provider,
+                model=decision.selected_model,
+                usage=response.usage,
+                task_type=decision.classification.get("task_type", "chat"),
+                cache_hit=cache_hit,
+            )
+        except Exception:
+            pass
 
     @staticmethod
     def _resolve_project_id(request: UnifiedRequest) -> uuid.UUID | None:

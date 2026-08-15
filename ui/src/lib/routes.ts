@@ -106,6 +106,12 @@ export const routes: RouteItem[] = [
     summary: "Registry, diff, and rollback.",
   },
   {
+    path: `${APP_PREFIX}/token-ledger`,
+    label: "Token Ledger",
+    section: "Observability",
+    summary: "Per-task token usage with model, date, and efficiency rating.",
+  },
+  {
     path: `${APP_PREFIX}/spend-analytics`,
     label: "Spend Analytics",
     section: "Observability",

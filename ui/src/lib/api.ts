@@ -140,6 +140,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  tokenLedger: (limit = 100) =>
+    request<Record<string, unknown>>(`/tokens?limit=${limit}`),
+  clearTokenLedger: () =>
+    request<Record<string, unknown>>("/tokens", { method: "DELETE" }),
 };
 
 export { API_BASE };

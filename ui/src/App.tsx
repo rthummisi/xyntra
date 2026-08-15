@@ -25,6 +25,7 @@ import SemanticCache from "./pages/SemanticCache";
 import Sessions from "./pages/Sessions";
 import Settings from "./pages/Settings";
 import SpendAnalytics from "./pages/SpendAnalytics";
+import TokenLedger from "./pages/TokenLedger";
 import Tasks from "./pages/Tasks";
 import Webhooks from "./pages/Webhooks";
 import SiteDemo from "./pages/site/SiteDemo";
@@ -95,6 +96,10 @@ export default function App() {
         <Route
           path={`${APP_PREFIX}/prompt-templates`}
           element={<PromptTemplates />}
+        />
+        <Route
+          path={`${APP_PREFIX}/token-ledger`}
+          element={<TokenLedger />}
         />
         <Route
           path={`${APP_PREFIX}/spend-analytics`}
